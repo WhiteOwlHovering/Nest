@@ -217,7 +217,7 @@ class Virtual_OR_Classification(Dataset):
     """Dataset for COCO
     """
 
-    def __init__(self, data_dir,split, year, dataloader_flag, transform=None, target_transform=None):
+    def __init__(self, data_dir,split, year,  transform=None, target_transform=None):
         self.data_dir = data_dir
         self.split = split
         ## data_dir: /media/rao/Data/Datasets/MSCOCO/coco/
@@ -226,12 +226,8 @@ class Virtual_OR_Classification(Dataset):
         self.gt_path = os.path.join(self.data_dir, 'annotations')
         assert os.path.isdir(self.gt_path), 'Could not find ground truth folder "%s".' % self.gt_path
         self.transform = transform
-        self.target_transform = target_transform
-        if dataloader_flag=='counting':
-            ## use coco 2017 train data
-            self.image_labels = self._read_annotations(split,year)
-        else:
-            print('error, dataloader_flag should be counting')
+        self.target_transform = target_transform 
+    	self.image_labels = self._read_annotations(split,year) 
         if split=='val':
             index=int(len(self.image_labels)/2)
             self.image_labels=self.image_labels[:index]
@@ -283,7 +279,6 @@ def virtual_OR_classification(
     split: str,
     data_dir: str,
     year: int = 2019,
-    dataloader_flag: str = 'counting',
     transform: Optional[Callable] = None,
     target_transform: Optional[Callable] = None) -> Dataset:
     """ Virtual OR dataset
