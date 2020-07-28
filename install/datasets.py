@@ -211,3 +211,84 @@ def pascal_voc_classification(
     object_categories = pascal_voc_object_categories()
     dataset = 'VOC' + str(year)
     return VOC_Classification(data_dir, dataset, split, object_categories, transform, target_transform)
+
+
+class Virtual_OR_Classification(Dataset):
+    """Dataset for COCO
+    """
+
+    def __init__(self, data_dir,split, year, dataloader_flag, transform=None, target_transform=None):
+        self.data_dir = data_dir
+        self.split = split
+        ## data_dir: /media/rao/Data/Datasets/MSCOCO/coco/
+        self.image_dir = os.path.join(data_dir,'images')
+        assert os.path.isdir(self.image_dir), 'Could not find image folder "%s".' % self.image_dir
+        self.gt_path = os.path.join(self.data_dir, 'annotations')
+        assert os.path.isdir(self.gt_path), 'Could not find ground truth folder "%s".' % self.gt_path
+        self.transform = transform
+        self.target_transform = target_transform
+        if dataloader_flag=='counting':
+            ## use coco 2017 train data
+            self.image_labels = self._read_annotations(split,year)
+        else:
+            print('error, dataloader_flag should be counting')
+        if split=='val':
+            index=int(len(self.image_labels)/2)
+            self.image_labels=self.image_labels[:index]
+        print(len(self.image_labels))
+
+    def _read_annotations(self,split,year):
+        gt_file=os.path.join(self.gt_path,'virtual_OR_'+split+'.json')
+        cocoGt=COCO(gt_file)
+        catids=cocoGt.getCatIds()
+        num_classes=len(catids)
+        catid2index={}
+        for i,cid in enumerate(catids):
+            catid2index[cid]=i
+        annids=cocoGt.getAnnIds()
+        class_labels = OrderedDict()
+        for id in annids:
+            anns=cocoGt.loadAnns(id)
+            for i in range(len(anns)):
+                ann=anns[i]
+                name=ann['image_id']
+                if name not in class_labels:
+                    class_labels[name]=np.zeros(num_classes)
+                category_id=ann['category_id']
+                class_labels[name][catid2index[category_id]]+=1
+        return list(class_labels.items())            
+
+    def __getitem__(self, index):
+        filename, target = self.image_labels[index]
+        target0=target
+        target1=np.array([1])
+        target0 = torch.from_numpy(target0).float()
+        # print(type(1*target1))
+        target1 = torch.from_numpy(1*target1).float()
+        # target = torch.from_numpy(target).float()
+        # 000000291625.jpg
+        filename='0'*(12-len(str(filename)))+str(filename) #os.path.join(
+        img = Image.open( self.image_dir+'/'+ filename + '.png').convert('RGB')
+        if self.transform:
+            img = self.transform(img)
+        if self.target_transform:
+            target = self.target_transform(target)
+        return img, target0,target1
+
+    def __len__(self):
+        return len(self.image_labels)
+
+@register
+def virtual_OR_classification(
+    split: str,
+    data_dir: str,
+    year: int = 2019,
+    dataloader_flag: str = 'counting',
+    transform: Optional[Callable] = None,
+    target_transform: Optional[Callable] = None) -> Dataset:
+    """ Virtual OR dataset
+    """
+
+    return Virtual_OR_Classification(data_dir, split,year,dataloader_flag, transform, target_transform)
+
+
