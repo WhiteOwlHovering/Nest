@@ -12,15 +12,12 @@ from nest import register, Context
 @register
 def checkpoint(
     train_ctx: Context, 
-    save_dir: str, 
-    save_step: Optional[int] = None,
-    save_final: bool = False,
-    save_latest: bool = False,
-    save_all: bool = False) -> None:
+    save_step: Optional[int] = 20,
+    ) -> None:
     """Checkpoint.
     """
 
-    save_dir = os.path.abspath(save_dir)
+    save_dir = os.path.abspath(train_ctx.save_dir)
     try:
         os.makedirs(save_dir)
     except OSError as exception:
@@ -38,15 +35,13 @@ def checkpoint(
         train_ctx.logger.info('checkpoint created at %s' % save_path)
 
     # checkpoint conditions
-    if save_all:
-        save_current_train_ctx(strftime("model_%Y_%m_%d_%H.%M.%S.pt", localtime()))
-    if save_step is not None and (train_ctx.epoch_idx + 1) % save_step == 0:
+    if save_step >0 and (train_ctx.epoch_idx + 1) % save_step == 0:
         save_current_train_ctx('model_%d.pt' % train_ctx.epoch_idx)
-    if save_final and (train_ctx.epoch_idx + 1) == train_ctx.max_epoch:
-        save_current_train_ctx('model_final.pt')
-    if save_latest:
-        save_current_train_ctx('model_latest.pt')
+    save_current_train_ctx('model_latest.pt')
 
+    if train_ctx.is_best:
+        save_current_train_ctx('model_%s.pt' % (train_ctx.eva_metrics))
+        train_ctx.is_best=False
 
 @register
 def vis_trend(ctx: Context, train_ctx: Context, server: str, env: str, port: int = 80) -> None:
